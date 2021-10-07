@@ -106,7 +106,7 @@ def triangle_area(vertex_1, vertex_2, vertex_3): # calculates the area of the tr
     area = 0.5 * magnitude
     return area
 
-def outer_circle_radius(): # compute the outer circle radius, largest circle centered at the triangle center such that it doesn't hit any of the frame or anchor edges
+def outer_circle_starting_radius(): # compute the outer circle radius, largest circle centered at the triangle center such that it doesn't hit any of the frame or anchor edges
     # compute distance from triangle center to the first frame vertex and use that as the starting outer radius
     center = vertices[vertex_indices["center"]]
     frame_vertex = vertices[vertex_indices["frame_threads"][0]] # get vertex location of a frame vertex
@@ -114,18 +114,43 @@ def outer_circle_radius(): # compute the outer circle radius, largest circle cen
     return outer_radius
 
 
-def circle_line_intersect(): # compute whether a line intersects a sphere with cross-section circle
-    return
+def circle_line_intersect(circle, v1, v2): # compute whether a line formed by vertex_1 and vertex_2 intersects a sphere with cross-section circle; return true if it hits the circle, false otherwise
+    r = circle[3] # get radius, circle format (center_x, center_y, center_z, radius)
+    print("checking radius r: " + str(r))
+    a = ((v2[0] - v1[0]) * (v2[0] - v1[0])) + ((v2[1] - v1[1]) * (v2[1] - v1[1])) + ((v2[2] - v1[2]) * (v2[2] - v1[2])) 
+    b = 2 * ((v2[0] - v1[0]) * (v1[0] - circle[0]) + (v2[1] - v1[1]) * (v1[1] - circle[1]) + (v2[2] - v1[2]) * (v1[2] - circle[2]))
+    c = (circle[0] * circle[0]) + (circle[1] * circle[1]) + (circle[2] * circle[2]) + (v1[0] * v1[0]) + (v1[1] * v1[1]) + (v1[2] * v1[2]) - 2 * (circle[0] * v1[0] + circle[1] * v1[1] + circle[2] * v1[2]) - r * r
+    if ((b * b) - (4 * a * c)) < 0:
+        return False # line does not intersect circle
+    else:
+        return True # line intersects circle
     
     
+def find_outer_circle_radius(center, radius): # computes the outer circle radius by taking the center of the triangle and a starting radius (computed from outer_circle_starting_radius)
+    x, y, z = center # get the x, y, z of the triangle center vertex
+    indices = edge_indices["frame_threads"] # get the indices of the edges of the frame threads in the edges array
+    intersect = False # hold whether a circle centered at center with this radius intersects the frame threads
+    for i in indices: # compute whether the circle intersects with the line (each frame thread edge)
+        vertex_1_index, vertex_2_index = edges[i] # get the indices of the vertices forming the frame thread edge
+        if (circle_line_intersect((x, y, z, radius), vertices[vertex_1_index], vertices[vertex_2_index])): # check intersection
+            intersect = True # circle hits frame thread edge
+            break
+    if (intersect):
+        # recursively call with a smaller radius
+        return find_outer_circle_radius(center, radius / 1.2) # need to return for both cases when recursively calling function, or else will get back None
+    else:
+        return radius # found outer circle radius value
 
 
 # create spiderweb
 frame_threads(vertices[0], vertices[1], vertices[2]) # add frame threads
-anchor_vertices = vertex_indices["anchor_threads"]
-triangle_center(vertices[anchor_vertices[0]], vertices[anchor_vertices[1]], vertices[anchor_vertices[2]])
-print("area: " + str(triangle_area(vertices[anchor_vertices[0]], vertices[anchor_vertices[1]], vertices[anchor_vertices[2]])))
-print("outer_circle_radius: " + str(outer_circle_radius()))
+anchor_vertices = vertex_indices["anchor_threads"] # get indices of anchor vertices 
+triangle_center(vertices[anchor_vertices[0]], vertices[anchor_vertices[1]], vertices[anchor_vertices[2]]) # compute triangle center from the three anchor vertices
+print("area: " + str(triangle_area(vertices[anchor_vertices[0]], vertices[anchor_vertices[1]], vertices[anchor_vertices[2]]))) # compute triangle area
+print("outer_circle_starting_radius: " + str(outer_circle_starting_radius())) # compute outer circle starting radius
+center_vertex = vertices[vertex_indices["center"]] # get circle center vertex
+outer_radius = find_outer_circle_radius(center_vertex, outer_circle_starting_radius()) # compute outer circle radius
+print("found outer_circle_radius: " + str(outer_radius))
 
 #def threads_from_center():
 #    num_vertices = len(vertices) # get current number of vertices in web mesh to make sure we're joining the right vertices for threads
