@@ -1,5 +1,5 @@
 import bpy
-from math import sqrt
+from math import sqrt, pi, sin, cos
 import numpy as np
 
 
@@ -11,7 +11,7 @@ import numpy as np
      
  
 # make web mesh
-vertices = [(0, 2, 0), (2, 10, 0), (-2, 2, 0)]
+vertices = [(5, 8, 0), (9, 4, 0), (-2, 6, 0)] # need to error check that all three vertices aren't on a single line
 edges = []
 #edges = []
 #faces = [(0, 1, 2)]
@@ -140,6 +140,29 @@ def find_outer_circle_radius(center, radius): # computes the outer circle radius
         return find_outer_circle_radius(center, radius / 1.2) # need to return for both cases when recursively calling function, or else will get back None
     else:
         return radius # found outer circle radius value
+    
+
+def create_circle(center, radius, num_vertices): # add vertices of circle with center "center" and radius "radius"
+    theta = (2 * pi) / num_vertices # calculate angle of each slice of the circle
+    circle_center = np.asarray(center)
+    anchor_vertices = vertex_indices["anchor_threads"] # get indices of anchor vertices 
+    vector_1 = np.asarray(vertices[anchor_vertices[1]]) - np.asarray(vertices[anchor_vertices[0]]) # vector 1 defining plane containing circle
+    vector_2 = np.asarray(vertices[anchor_vertices[2]]) - np.asarray(vertices[anchor_vertices[0]]) # vector 2 defining plane containing circle
+    v1v2_cross = np.cross(vector_1, vector_2) # get cross product of two vectors that form the triangle edges to get a vector normal to the plane with the circle
+    v1v2_cross_normalized = v1v2_cross / np.linalg.norm(v1v2_cross) # normalize the vector that's normal to the plane containing the circle
+    u = vector_1 / np.linalg.norm(vector_1) # get unit vector to serve as "x-axis" of the plane
+    v = np.cross(u, v1v2_cross_normalized) # get vector to serve as "y-axis" of the plane
+    v = v / np.linalg.norm(v) # normalize v to get the unit "y-axis" of the plane
+    print("dot product: " + str(np.dot(u, v))) # make sure dot product of u and v = 0 so the axes are perpendicular
+    num_vertices_total = len(vertices) # get current # of vertices
+    circle_vertices = [] # save indices of the vertices lying on the circle
+    for i in range(0, num_vertices):
+        vertex = tuple(circle_center + radius * cos(theta * i) * u + radius * sin(theta * i) * v) 
+        vertices.append(vertex)
+        print("circle_vertex: " + str(vertex))
+        circle_vertices.append(num_vertices_total + i) # save index in vertices list of the vertex being added
+    vertex_indices["outer_circle"] = circle_vertices
+    print(str(vertex_indices["outer_circle"]))
 
 
 # create spiderweb
@@ -151,6 +174,7 @@ print("outer_circle_starting_radius: " + str(outer_circle_starting_radius())) # 
 center_vertex = vertices[vertex_indices["center"]] # get circle center vertex
 outer_radius = find_outer_circle_radius(center_vertex, outer_circle_starting_radius()) # compute outer circle radius
 print("found outer_circle_radius: " + str(outer_radius))
+create_circle(center_vertex, outer_radius, 8)
 
 #def threads_from_center():
 #    num_vertices = len(vertices) # get current number of vertices in web mesh to make sure we're joining the right vertices for threads
