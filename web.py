@@ -167,6 +167,22 @@ def create_circle(center, radius, num_vertices): # add vertices of circle with c
         print("circle_vertex: " + str(vertex))
         circle_vertices.append(num_vertices_total + i) # save index in vertices list of the vertex being added
     vertex_indices["outer_circle"] = circle_vertices
+    
+    
+    # create edges between adjacent outer circle vertices
+    circle_edges = [] # save indices of the edges creating the circle in the edges list
+    total_edges = len(edges) # the total number of edges
+    for i in range(0, num_vertices):
+        if i < (num_vertices - 1): # all vertices besides the last one
+            edges.append([circle_vertices[i], circle_vertices[i + 1]]) # create an edge between this vertex and the next one
+            circle_edges.append(total_edges + i) # store what index that newly added edge is within the entire edges list
+        else:
+            edges.append([circle_vertices[i], circle_vertices[0]]) # create an edge between the last vertex and the first one to close the circle
+            circle_edges.append(total_edges + i) # store what index that newly added edge is within the entire edges list
+    edge_indices["outer_circle"] = circle_edges
+    
+        
+    
     print(str(vertex_indices["outer_circle"]))
         
  
