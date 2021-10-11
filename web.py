@@ -147,7 +147,7 @@ def find_outer_circle_radius(center, radius): # computes the outer circle radius
         return radius # found outer circle radius value
     
 
-def create_circle(center, radius, num_vertices): # add vertices of circle with center "center" and radius "radius"
+def create_circle(center, radius, num_vertices, circle_num): # add vertices of circle with center "center" and radius "radius"
     theta = (2 * pi) / num_vertices # calculate angle of each slice of the circle
     circle_center = np.asarray(center)
     anchor_vertices = vertex_indices["anchor_threads"] # get indices of anchor vertices 
@@ -166,7 +166,7 @@ def create_circle(center, radius, num_vertices): # add vertices of circle with c
         vertices.append(vertex)
         print("circle_vertex: " + str(vertex))
         circle_vertices.append(num_vertices_total + i) # save index in vertices list of the vertex being added
-    vertex_indices["outer_circle"] = circle_vertices
+    vertex_indices["circle_" + str(circle_num)] = circle_vertices
     
     
     # create edges between adjacent outer circle vertices
@@ -179,16 +179,16 @@ def create_circle(center, radius, num_vertices): # add vertices of circle with c
         else:
             edges.append([circle_vertices[i], circle_vertices[0]]) # create an edge between the last vertex and the first one to close the circle
             circle_edges.append(total_edges + i) # store what index that newly added edge is within the entire edges list
-    edge_indices["outer_circle"] = circle_edges
+    edge_indices["circle_" + str(circle_num)] = circle_edges
     
         
     
-    print(str(vertex_indices["outer_circle"]))
+    print(str(vertex_indices["circle_" + str(circle_num)]))
         
  
 def connect_frame_and_outer_circle(): # create an edge between each frame vertex and its closest vertex on the outer circle
     frame_vertices = vertex_indices["frame_threads"] # get all of the indices of the frame thread vertices
-    outer_circle_vertices = vertex_indices["outer_circle"] # get all of the indices of the outer circle vertices
+    outer_circle_vertices = vertex_indices["circle_0"] # get all of the indices of the outer circle vertices
     frame_outer_circle_edges = []
     total_edges = len(edges)
     
@@ -198,18 +198,27 @@ def connect_frame_and_outer_circle(): # create an edge between each frame vertex
         shortest_distance = float('inf')
         closest_circle_vertex_index = 0
         for i in range(len(outer_circle_vertices)): # iterate through every outer circle vertex
-            outer_circle_vertex = vertices[vertex_indices["outer_circle"][i]] # get vertex location of the outer circle vertex 
+            outer_circle_vertex = vertices[vertex_indices["circle_0"][i]] # get vertex location of the outer circle vertex 
             distance = get_distance(frame_vertex, outer_circle_vertex) # compute distance from frame vertex to outer circle vertex
             if distance < shortest_distance:
                 shortest_distance = distance # update shortest distance if the distance between the frame vertex to that outer circle vertex is shorter than what's currently the shortest
-                closest_circle_vertex_index = vertex_indices["outer_circle"][i] # update index to be that outer circle vertex's index
+                closest_circle_vertex_index = vertex_indices["circle_0"][i] # update index to be that outer circle vertex's index
         # create edge between that frame vertex and its closest circle vertex
         edges.append([frame_vertex_index, closest_circle_vertex_index])
         frame_outer_circle_edges.append(total_edges + index) # save the index of the added edge in the edges list
     
     edge_indices["frame_outer_circle"] = frame_outer_circle_edges # save the list of indices of the edges between the frame vertices and their cloest outer circle vertex
 
+
+def add_inner_circles(num_circles, outer_radius, num_vertices): # add the inner circles of the spiderweb
+    dr = outer_radius / (num_circles + 1) # get distance between inner circles
+    center_vertex = vertices[vertex_indices["center"]] # get circle center vertex
+    for i in range(num_circles):
+        create_circle(center_vertex, outer_radius - (i * dr), num_vertices, i + 1) # create inner circle
+
 # create spiderweb
+num_vertices = 10 # number of vertices making up a circle
+num_inner_circles = 7 # number of inner circles of the spiderweb
 frame_threads(vertices[0], vertices[1], vertices[2]) # add frame threads
 anchor_vertices = vertex_indices["anchor_threads"] # get indices of anchor vertices 
 triangle_center(vertices[anchor_vertices[0]], vertices[anchor_vertices[1]], vertices[anchor_vertices[2]]) # compute triangle center from the three anchor vertices
@@ -218,8 +227,9 @@ print("outer_circle_starting_radius: " + str(outer_circle_starting_radius())) # 
 center_vertex = vertices[vertex_indices["center"]] # get circle center vertex
 outer_radius = find_outer_circle_radius(center_vertex, outer_circle_starting_radius()) # compute outer circle radius
 print("found outer_circle_radius: " + str(outer_radius))
-create_circle(center_vertex, outer_radius, 8)
+create_circle(center_vertex, outer_radius, num_vertices, 0) # create outer circle
 connect_frame_and_outer_circle()
+add_inner_circles(num_inner_circles, outer_radius, num_vertices)
 
 #def threads_from_center():
 #    num_vertices = len(vertices) # get current number of vertices in web mesh to make sure we're joining the right vertices for threads
