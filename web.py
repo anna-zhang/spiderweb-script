@@ -107,11 +107,16 @@ def triangle_area(vertex_1, vertex_2, vertex_3): # calculates the area of the tr
     return area
 
 def outer_circle_starting_radius(): # compute the outer circle radius, largest circle centered at the triangle center such that it doesn't hit any of the frame or anchor edges
-    # compute distance from triangle center to the first frame vertex and use that as the starting outer radius
+    # compute distance from triangle center to the closest frame vertex and use that as the starting outer radius
     center = vertices[vertex_indices["center"]]
-    frame_vertex = vertices[vertex_indices["frame_threads"][0]] # get vertex location of a frame vertex
-    outer_radius = get_distance(center, frame_vertex)
-    return outer_radius
+    frame_vertices = vertex_indices["frame_threads"] # get all of the frame thread vertices
+    shortest_distance = float('inf')
+    for index in range(len(frame_vertices)):
+        frame_vertex = vertices[vertex_indices["frame_threads"][index]] # get vertex location of the frame vertex
+        distance = get_distance(center, frame_vertex) # compute distance from center to that frame vertex
+        if distance < shortest_distance:
+            shortest_distance = distance # update shortest distance if the distance between the center to that frame vertex is shorter than what's currently the shortest
+    return shortest_distance
 
 
 def circle_line_intersect(circle, v1, v2): # compute whether a line formed by vertex_1 and vertex_2 intersects a sphere with cross-section circle; return true if it hits the circle, false otherwise
@@ -162,7 +167,7 @@ def create_circle(center, radius, num_vertices): # add vertices of circle with c
         print("circle_vertex: " + str(vertex))
         circle_vertices.append(num_vertices_total + i) # save index in vertices list of the vertex being added
     vertex_indices["outer_circle"] = circle_vertices
-    print(str(vertex_indices["outer_circle"]))
+    print(str(vertex_indices["outer_circle"]))  
 
 
 # create spiderweb
