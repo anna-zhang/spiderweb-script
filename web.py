@@ -215,10 +215,33 @@ def add_inner_circles(num_circles, outer_radius, num_vertices): # add the inner 
     center_vertex = vertices[vertex_indices["center"]] # get circle center vertex
     for i in range(num_circles):
         create_circle(center_vertex, outer_radius - (i * dr), num_vertices, i + 1) # create inner circle
-
+    
+def connect_circles(num_circles): # connect the spiderweb's circles with threads going through corresponding vertices
+    for i in range(num_circles):
+        if i == (num_circles - 1): # most inner circle, connect all vertices to the center point
+            outer_circle_vertex_indices = vertex_indices["circle_" + str(i)] # get circle vertices
+            center_vertex_index = vertex_indices["center"] # get index of circle center vertex in the vertices list
+            print("center_vertex_index: " + str(center_vertex_index))
+            total_edges = len(edges)
+            new_edges = []
+            for j in range(len(outer_circle_vertex_indices)):
+                edges.append([outer_circle_vertex_indices[j], center_vertex_index])
+                new_edges.append(total_edges + j) 
+            edge_indices["circle_to_center_" + str(i)] = new_edges # remember indices of new edges in the edges list
+        else:
+            # connect two circles
+            outer_circle_vertex_indices = vertex_indices["circle_" + str(i)]
+            inner_circle_vertex_indices = vertex_indices["circle_" + str(i + 1)]
+            total_edges = len(edges)
+            new_edges = []
+            for j in range(len(outer_circle_vertex_indices)):
+                 edges.append([outer_circle_vertex_indices[j], inner_circle_vertex_indices[j]]) # create an edge between the vertex on outer circle with its corresponding vertex on the inner circle
+                 new_edges.append(total_edges + j) 
+            edge_indices["circle_to_center_" + str(i)] = new_edges # remember indices of new edges in the edges list
+    
 # create spiderweb
 num_vertices = 10 # number of vertices making up a circle
-num_inner_circles = 7 # number of inner circles of the spiderweb
+num_circles = 8 # number of circles of the spiderweb
 frame_threads(vertices[0], vertices[1], vertices[2]) # add frame threads
 anchor_vertices = vertex_indices["anchor_threads"] # get indices of anchor vertices 
 triangle_center(vertices[anchor_vertices[0]], vertices[anchor_vertices[1]], vertices[anchor_vertices[2]]) # compute triangle center from the three anchor vertices
@@ -228,8 +251,9 @@ center_vertex = vertices[vertex_indices["center"]] # get circle center vertex
 outer_radius = find_outer_circle_radius(center_vertex, outer_circle_starting_radius()) # compute outer circle radius
 print("found outer_circle_radius: " + str(outer_radius))
 create_circle(center_vertex, outer_radius, num_vertices, 0) # create outer circle
-connect_frame_and_outer_circle()
-add_inner_circles(num_inner_circles, outer_radius, num_vertices)
+connect_frame_and_outer_circle() # connect every frame vertex with a vertex on the spiderweb's outer circle 
+add_inner_circles(num_circles - 1, outer_radius, num_vertices) # add inner circles of spiderweb
+connect_circles(num_circles) # connect corresponding vertices in circles with threads
 
 #def threads_from_center():
 #    num_vertices = len(vertices) # get current number of vertices in web mesh to make sure we're joining the right vertices for threads
