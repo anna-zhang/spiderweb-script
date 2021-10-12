@@ -11,7 +11,9 @@ import numpy as np
      
  
 # make web mesh
-vertices = [(5, 8, 0), (9, 4, 0), (-2, 6, 0)] # need to error check that all three vertices aren't on a single line
+# vertices = [(5, 8, 0), (9, 4, 0), (-2, 6, 0)] # need to error check that all three vertices aren't on a single line
+vertices = [(3, 1, 4), (2, 6, 3), (-6, 3, 2)] # need to error check that all three vertices aren't on a single line
+
 edges = []
 #edges = []
 #faces = [(0, 1, 2)]
@@ -238,7 +240,7 @@ def connect_circles(num_circles): # connect the spiderweb's circles with threads
                  edges.append([outer_circle_vertex_indices[j], inner_circle_vertex_indices[j]]) # create an edge between the vertex on outer circle with its corresponding vertex on the inner circle
                  new_edges.append(total_edges + j) 
             edge_indices["circle_to_center_" + str(i)] = new_edges # remember indices of new edges in the edges list
-    
+
 # create spiderweb
 num_vertices = 10 # number of vertices making up a circle
 num_circles = 8 # number of circles of the spiderweb
@@ -279,3 +281,11 @@ web_collection = bpy.data.collections.new('web_collection')
 bpy.context.scene.collection.children.link(web_collection)
 # add web object to scene collection
 web_collection.objects.link(web_object)
+
+
+# give the spiderweb volume
+bpy.context.view_layer.objects.active = web_object
+web_object.select_set(True)
+bpy.ops.object.convert(target='CURVE', keep_original=False, angle=1.22173, thickness=5, seams=False, faces=True, offset=0.01)
+bpy.context.object.data.bevel_depth = 0.05
+bpy.ops.object.convert(target='MESH', keep_original=False, angle=1.22173, thickness=5, seams=False, faces=True, offset=0.01)
