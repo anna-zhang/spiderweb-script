@@ -12,7 +12,7 @@ class REAL_PT_web(Panel):
     bl_context = "mesh_edit" # only shows up in edit mode
     bl_region_type = "UI"
     bl_label = "Spiderweb"
-    bl_category = "Real Spiderweb"
+    bl_category = "Spiderweb"
 
     def draw(self, context):
         scn = context.scene
@@ -20,8 +20,7 @@ class REAL_PT_web(Panel):
         layout = self.layout
 
         col = layout.column(align=True)
-#        col.prop(settings, 'coverage', slider=True)
-#        col.prop(settings, 'height')
+        col.prop(settings, 'density', slider=True)
 
         layout.use_property_split = True
         layout.use_property_decorate = False
@@ -45,8 +44,7 @@ class WEB_OT_Create(Operator):
 
 
     def execute(self, context):
-#        coverage = context.scene.web.coverage
-#        height = context.scene.web.height
+        density = context.scene.web.density
         # start UI progress bar
         context.window_manager.progress_begin(0, 10)
         timer=0
@@ -68,7 +66,11 @@ class WEB_OT_Create(Operator):
                     print("world_co: " + str(vertex))
         if len(anchor_vertices) > 3:
             self.report({'INFO'}, "Some vertices were not used – only 3 vertices are needed to create the spiderweb")
-        createSpiderweb(anchor_vertices[0], anchor_vertices[1], anchor_vertices[2]) # only creates a web using three selected vertices
+        elif len(anchor_vertices) < 2:
+            self.report({'INFO'}, "ERROR – 3 vertices are needed to create the spiderweb")
+            return {'CANCELLED'}
+        
+        createSpiderweb(anchor_vertices[0], anchor_vertices[1], anchor_vertices[2], density) # only creates a web using three selected vertices
 
         # end progress bar
         context.window_manager.progress_end()
@@ -76,7 +78,7 @@ class WEB_OT_Create(Operator):
         return {'FINISHED'}
 
 
-def createSpiderweb(v1, v2, v3): # create a spiderweb given three vertices
+def createSpiderweb(v1, v2, v3, density): # create a spiderweb given three vertices and density of web
     vertices = [v1, v2, v3]
     edges = []
     faces = []
@@ -85,16 +87,12 @@ def createSpiderweb(v1, v2, v3): # create a spiderweb given three vertices
     vertex_indices["anchor_threads"] = [0, 1, 2] # anchor vertices are the first three vertices in the vertices array
     edge_indices = {} # create dictionary to hold indices of the edges in the edges array
 
-
     # returns the coordinates of the vertex along the edge connecting vertex_1 and vertex_2, according to a weight value (0.5 weight value gets halfway point)
     def interpolate_edge_vertex(vertex_1, vertex_2, weight) -> ():
         vertex_x = vertex_1[0] + (vertex_2[0] - vertex_1[0]) * weight 
         vertex_y = vertex_1[1] + (vertex_2[1] - vertex_1[1]) * weight 
         vertex_z = vertex_1[2] + (vertex_2[2] - vertex_1[2]) * weight 
         return (vertex_x, vertex_y, vertex_z)
-
-
-    #print(interpolate_edge_vertex(vertices[0], vertices[1], 0.5))
 
     # returns the coordinate of the center of a triangle formed by vertex_1, vertex_2, and vertex_3
     def triangle_center(vertex_1, vertex_2, vertex_3):
@@ -104,8 +102,6 @@ def createSpiderweb(v1, v2, v3): # create a spiderweb given three vertices
         
         vertices.append((vertex_x, vertex_y, vertex_z)) # add vertex for triangle center
         vertex_indices["center"] = len(vertices) - 1
-
-    #print(triangle_center(vertices[0], vertices[1], vertices[2]))
 
     # takes in three vertices forming a triangle and gets six vertices along the edges of the triangle and sets those as the vertices forming the frame threads
     def frame_threads(vertex_1, vertex_2, vertex_3):
@@ -293,8 +289,6 @@ def createSpiderweb(v1, v2, v3): # create a spiderweb given three vertices
 
     
     # create spiderweb
-    num_vertices = 10 # number of vertices making up a circle
-    num_circles = 8 # number of circles of the spiderweb
     frame_threads(vertices[0], vertices[1], vertices[2]) # add frame threads
     anchor_vertices = vertex_indices["anchor_threads"] # get indices of anchor vertices 
     triangle_center(vertices[anchor_vertices[0]], vertices[anchor_vertices[1]], vertices[anchor_vertices[2]]) # compute triangle center from the three anchor vertices
@@ -303,6 +297,16 @@ def createSpiderweb(v1, v2, v3): # create a spiderweb given three vertices
     center_vertex = vertices[vertex_indices["center"]] # get circle center vertex
     outer_radius = find_outer_circle_radius(center_vertex, outer_circle_starting_radius()) # compute outer circle radius
     print("found outer_circle_radius: " + str(outer_radius))
+    num_vertices = int(8 * outer_radius * (density / 50)) # number of vertices making up a circle
+    num_circles = int(6 * outer_radius * (density / 50)) # number of circles of the spiderweb
+    if num_vertices < 7:
+        num_vertices = 6 # minimum number of vertices for the spiderweb
+    if num_circles < 3:
+        num_circles = 3 # minimum number of circles if density > 0
+    if density == 0:
+        num_circles = 2 # minimum number of circles if density = 0
+    print("num_vertices: " + str(num_vertices))
+    print("num_circles: " + str(num_circles))
     create_circle(center_vertex, outer_radius, num_vertices, 0) # create outer circle
     connect_frame_and_outer_circle() # connect every frame vertex with a vertex on the spiderweb's outer circle 
     add_inner_circles(num_circles - 1, outer_radius, num_vertices) # add inner circles of spiderweb
@@ -333,23 +337,13 @@ def createSpiderweb(v1, v2, v3): # create a spiderweb given three vertices
 # Properties
 class WebSettings(PropertyGroup):
     # user-inputted values, not yet used
-    coverage : IntProperty(
-        name = "Coverage",
+    density : IntProperty(
+        name = "Density",
         description = "Density of web",
-        default = 100,
+        default = 50,
         min = 0,
         max = 100,
         subtype = 'PERCENTAGE'
-        )
-
-    height : FloatProperty(
-        name = "Height",
-        description = "Height of the web",
-        default = 0.75,
-        step = 1,
-        precision = 2,
-        min = 0.1,
-        max = 1
         )
 
 
