@@ -23,6 +23,8 @@ class REAL_PT_web(Panel):
         col.prop(settings, 'density', slider=True) # density of web user input control
         col.prop(settings, 'thickness', slider=True) # thickness of strands user input control
         col.prop(settings, 'age', slider=True) # age of spiderweb user input control
+        col.prop(settings, 'raindrops_amount', slider=True) # amount of raindrops user input control
+        col.prop(settings, 'raindrops_size', slider=True) # amount of raindrops user input control
 
         layout.use_property_split = True
         layout.use_property_decorate = False
@@ -49,6 +51,8 @@ class WEB_OT_Create(Operator):
         density = context.scene.web.density
         thickness = context.scene.web.thickness 
         age = context.scene.web.age 
+        raindrops_amount = context.scene.web.raindrops_amount 
+        raindrops_size = context.scene.web.raindrops_size 
         # start UI progress bar
         context.window_manager.progress_begin(0, 10)
         timer=0
@@ -74,7 +78,7 @@ class WEB_OT_Create(Operator):
             self.report({'INFO'}, "ERROR – 3 vertices are needed to create the spiderweb")
             return {'CANCELLED'}
         
-        createSpiderweb(anchor_vertices[0], anchor_vertices[1], anchor_vertices[2], density, thickness, age) # only creates a web using three selected vertices
+        createSpiderweb(anchor_vertices[0], anchor_vertices[1], anchor_vertices[2], density, thickness, age, raindrops_amount, raindrops_size) # only creates a web using three selected vertices
 
         # end progress bar
         context.window_manager.progress_end()
@@ -82,7 +86,7 @@ class WEB_OT_Create(Operator):
         return {'FINISHED'}
 
 
-def createSpiderweb(v1, v2, v3, density, thickness, age): # create a spiderweb given three vertices, density of web, strand thickness, spiderweb age
+def createSpiderweb(v1, v2, v3, density, thickness, age, raindrops_amount, raindrops_size): # create a spiderweb given three vertices, density of web, strand thickness, spiderweb age, amount of raindrops, size of raindrops
     vertices = [v1, v2, v3]
     edges = []
     faces = []
@@ -347,7 +351,9 @@ def createSpiderweb(v1, v2, v3, density, thickness, age): # create a spiderweb g
     bpy.ops.mesh.select_all(action = 'SELECT')
     if thickness < 10:
         thickness = 10 # minimum thickness size
-    actual_thickness = 100 - thickness # larger thickness values need to correspond to smaller actual_thickness values since the smaller the value, the thicker the spiderweb
+    actual_thickness = (100 - thickness) # larger thickness values need to correspond to smaller actual_thickness values since the smaller the value, the thicker the spiderweb
+    if actual_thickness < 1:
+        actual_thickness = 1 # can't divide by 0
     bpy.ops.transform.resize(value=(actual_thickness, actual_thickness, actual_thickness)) # PARAMETER - increasing value will make spiderweb thinner x,y,z should be same value
 
     bpy.ops.object.mode_set(mode = 'OBJECT')
@@ -378,10 +384,13 @@ def createSpiderweb(v1, v2, v3, density, thickness, age): # create a spiderweb g
     part = web_object.particle_systems[0]
     settings = part.settings
     settings.type = 'HAIR'
-    settings.count = 400 #PARAMETER- will change how many raindrops there are
+    num_raindrops = (raindrops_amount / 100) * 1000
+    settings.count = num_raindrops # PARAMETER - will change how many raindrops there are
     settings.render_type = 'OBJECT'
-    #PARAMETER- Line 380, radius =.2, will change size of the raindrops
-    sphere= bpy.ops.mesh.primitive_uv_sphere_add(segments=32, ring_count=16, radius=.2, calc_uvs=True, enter_editmode=False, align='WORLD', location=(0.0, 0.0, 0.0), rotation=(0.0, 0.0, 0.0), scale=(0.1, 0.1, 0.1))
+    raindrop_radius = (raindrops_size / 100) * outer_radius * 2 # scale according to outer radius
+    if raindrop_radius < 0.05:
+        raindrop_radius = 0.05 # minimum raindrop radius
+    sphere= bpy.ops.mesh.primitive_uv_sphere_add(segments=32, ring_count=16, radius=raindrop_radius, calc_uvs=True, enter_editmode=False, align='WORLD', location=(0.0, 0.0, 0.0), rotation=(0.0, 0.0, 0.0), scale=(0.1, 0.1, 0.1)) # PARAMETER radius =.2, will change size of the raindrops
     bpy.ops.object.shade_smooth()
     settings.instance_object = bpy.data.objects['Sphere']
 
@@ -408,11 +417,29 @@ class WebSettings(PropertyGroup):
     age : IntProperty(
         name = "Spiderweb Age",
         description = "Age of spiderweb",
-        default = 0, # 0 days old, fresh spiderweb
+        default = 20, # 0 days old, fresh spiderweb
         min = 0,
         max = 100,
         subtype = 'PERCENTAGE'
         )
+    raindrops_amount : IntProperty(
+        name = "Amount of Raindrops",
+        description = "Raindrop coverage on spiderweb",
+        default = 30, 
+        min = 0,
+        max = 100,
+        subtype = 'PERCENTAGE'
+        )
+    raindrops_size : IntProperty(
+        name = "Raindrop Size",
+        description = "Size of raindrops on spiderweb",
+        default = 50, 
+        min = 0,
+        max = 100,
+        subtype = 'PERCENTAGE'
+        )
+
+
 
 
 
