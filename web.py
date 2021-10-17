@@ -22,6 +22,7 @@ class REAL_PT_web(Panel):
         col = layout.column(align=True)
         col.prop(settings, 'density', slider=True) # density of web user input control
         col.prop(settings, 'thickness', slider=True) # thickness of strands user input control
+        col.prop(settings, 'age', slider=True) # age of spiderweb user input control
 
         layout.use_property_split = True
         layout.use_property_decorate = False
@@ -47,6 +48,7 @@ class WEB_OT_Create(Operator):
     def execute(self, context):
         density = context.scene.web.density
         thickness = context.scene.web.thickness 
+        age = context.scene.web.age 
         # start UI progress bar
         context.window_manager.progress_begin(0, 10)
         timer=0
@@ -72,7 +74,7 @@ class WEB_OT_Create(Operator):
             self.report({'INFO'}, "ERROR – 3 vertices are needed to create the spiderweb")
             return {'CANCELLED'}
         
-        createSpiderweb(anchor_vertices[0], anchor_vertices[1], anchor_vertices[2], density, thickness) # only creates a web using three selected vertices
+        createSpiderweb(anchor_vertices[0], anchor_vertices[1], anchor_vertices[2], density, thickness, age) # only creates a web using three selected vertices
 
         # end progress bar
         context.window_manager.progress_end()
@@ -80,7 +82,7 @@ class WEB_OT_Create(Operator):
         return {'FINISHED'}
 
 
-def createSpiderweb(v1, v2, v3, density, thickness): # create a spiderweb given three vertices, density of web, strand thickness
+def createSpiderweb(v1, v2, v3, density, thickness, age): # create a spiderweb given three vertices, density of web, strand thickness, spiderweb age
     vertices = [v1, v2, v3]
     edges = []
     faces = []
@@ -366,7 +368,7 @@ def createSpiderweb(v1, v2, v3, density, thickness): # create a spiderweb given 
     texture = bpy.data.textures["Texture"] # This one has noise_scale attribute
     texture.noise_scale = 2  # affects the shape of how it looks, makes it look curly/old
     mp = web_object.modifiers.new('dis', 'DISPLACE')
-    mp.strength = 1 #PARAMETER- will change how strong the displacement is, how much noise actually creates changes on the surface
+    mp.strength = age / 100 # PARAMETER - will change how strong the displacement is, how much noise actually creates changes on the surfacex
     mp.texture = texture
 
 
@@ -399,6 +401,14 @@ class WebSettings(PropertyGroup):
         name = "Strand Thickness",
         description = "Thickness of strands",
         default = 50,
+        min = 0,
+        max = 100,
+        subtype = 'PERCENTAGE'
+        )
+    age : IntProperty(
+        name = "Spiderweb Age",
+        description = "Age of spiderweb",
+        default = 0, # 0 days old, fresh spiderweb
         min = 0,
         max = 100,
         subtype = 'PERCENTAGE'
