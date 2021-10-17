@@ -20,7 +20,8 @@ class REAL_PT_web(Panel):
         layout = self.layout
 
         col = layout.column(align=True)
-        col.prop(settings, 'density', slider=True)
+        col.prop(settings, 'density', slider=True) # density of web user input control
+        col.prop(settings, 'thickness', slider=True) # thickness of strands user input control
 
         layout.use_property_split = True
         layout.use_property_decorate = False
@@ -45,6 +46,7 @@ class WEB_OT_Create(Operator):
 
     def execute(self, context):
         density = context.scene.web.density
+        thickness = context.scene.web.thickness 
         # start UI progress bar
         context.window_manager.progress_begin(0, 10)
         timer=0
@@ -66,11 +68,11 @@ class WEB_OT_Create(Operator):
                     print("world_co: " + str(vertex))
         if len(anchor_vertices) > 3:
             self.report({'INFO'}, "Some vertices were not used – only 3 vertices are needed to create the spiderweb")
-        elif len(anchor_vertices) < 2:
+        elif len(anchor_vertices) < 3:
             self.report({'INFO'}, "ERROR – 3 vertices are needed to create the spiderweb")
             return {'CANCELLED'}
         
-        createSpiderweb(anchor_vertices[0], anchor_vertices[1], anchor_vertices[2], density) # only creates a web using three selected vertices
+        createSpiderweb(anchor_vertices[0], anchor_vertices[1], anchor_vertices[2], density, thickness) # only creates a web using three selected vertices
 
         # end progress bar
         context.window_manager.progress_end()
@@ -78,7 +80,7 @@ class WEB_OT_Create(Operator):
         return {'FINISHED'}
 
 
-def createSpiderweb(v1, v2, v3, density): # create a spiderweb given three vertices and density of web
+def createSpiderweb(v1, v2, v3, density, thickness): # create a spiderweb given three vertices, density of web, strand thickness
     vertices = [v1, v2, v3]
     edges = []
     faces = []
@@ -328,23 +330,80 @@ def createSpiderweb(v1, v2, v3, density): # create a spiderweb given three verti
     # give the spiderweb volume
     bpy.context.view_layer.objects.active = web_object
     web_object.select_set(True)
-    bpy.ops.object.convert(target='CURVE', keep_original=False, angle=1.22173, thickness=5, seams=False, faces=True, offset=0.01)
-    bpy.context.object.data.bevel_depth = 0.05
-    bpy.ops.object.convert(target='MESH', keep_original=False, angle=1.22173, thickness=5, seams=False, faces=True, offset=0.01)
+    bpy.ops.object.select_all(action='DESELECT')
+    web_object.select_set(True)
+    bpy.ops.object.origin_set(type='ORIGIN_GEOMETRY', center='MEDIAN')
+    skin = web_object.modifiers.new('skinn', type='SKIN')
+    skin.branch_smoothing = 1
+    bpy.ops.object.mode_set(mode = 'OBJECT')
+    bpy.ops.object.select_all(action='DESELECT')
+    web_object.select_set(True)
+    bpy.ops.object.mode_set(mode = 'EDIT') 
+    bpy.ops.object.mode_set(mode = 'OBJECT')
+    bpy.ops.object.mode_set(mode = 'EDIT') 
+    bpy.ops.mesh.select_mode(type="VERT")
+    bpy.ops.mesh.select_all(action = 'SELECT')
+    if thickness < 10:
+        thickness = 10 # minimum thickness size
+    actual_thickness = 100 - thickness # larger thickness values need to correspond to smaller actual_thickness values since the smaller the value, the thicker the spiderweb
+    bpy.ops.transform.resize(value=(actual_thickness, actual_thickness, actual_thickness)) # PARAMETER - increasing value will make spiderweb thinner x,y,z should be same value
 
+    bpy.ops.object.mode_set(mode = 'OBJECT')
+    bpy.ops.object.origin_set(type='GEOMETRY_ORIGIN', center='MEDIAN')
+    bpy.context.view_layer.objects.active = web_object
+    web_object.select_set(True)
+    bpy.ops.transform.resize(value=(1/actual_thickness, 1/actual_thickness, 1/actual_thickness)) # equal to 1/i where i is the actual strand thickness parameter value
+    bpy.ops.object.modifier_apply(modifier='skinn')
+
+    md = web_object.modifiers.new('sub', 'SUBSURF')
+    md.levels = 4
+    md.subdivision_type = "SIMPLE"
+    bpy.ops.object.modifier_apply(modifier='sub')
+    bpy.ops.object.shade_smooth()
+    
+    # adds noise to the spider web for realism
+    texture = bpy.data.textures.new("Texture", type = "CLOUDS") # clouds for Perlin noise
+    texture = bpy.data.textures["Texture"] # This one has noise_scale attribute
+    texture.noise_scale = 2  # affects the shape of how it looks, makes it look curly/old
+    mp = web_object.modifiers.new('dis', 'DISPLACE')
+    mp.strength = 1 #PARAMETER- will change how strong the displacement is, how much noise actually creates changes on the surface
+    mp.texture = texture
+
+
+    #does the particle system
+    
+    web_object.modifiers.new('part', type = 'PARTICLE_SYSTEM')
+    part = web_object.particle_systems[0]
+    settings = part.settings
+    settings.type = 'HAIR'
+    settings.count = 400 #PARAMETER- will change how many raindrops there are
+    settings.render_type = 'OBJECT'
+    #PARAMETER- Line 380, radius =.2, will change size of the raindrops
+    sphere= bpy.ops.mesh.primitive_uv_sphere_add(segments=32, ring_count=16, radius=.2, calc_uvs=True, enter_editmode=False, align='WORLD', location=(0.0, 0.0, 0.0), rotation=(0.0, 0.0, 0.0), scale=(0.1, 0.1, 0.1))
+    bpy.ops.object.shade_smooth()
+    settings.instance_object = bpy.data.objects['Sphere']
 
 
 # Properties
 class WebSettings(PropertyGroup):
-    # user-inputted values, not yet used
+    # user-inputted values to control spiderweb appearance
     density : IntProperty(
-        name = "Density",
+        name = "Web Density",
         description = "Density of web",
         default = 50,
         min = 0,
         max = 100,
         subtype = 'PERCENTAGE'
         )
+    thickness : IntProperty(
+        name = "Strand Thickness",
+        description = "Thickness of strands",
+        default = 50,
+        min = 0,
+        max = 100,
+        subtype = 'PERCENTAGE'
+        )
+
 
 
 #############################################################################################
