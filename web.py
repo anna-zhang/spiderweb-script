@@ -328,10 +328,58 @@ def createSpiderweb(v1, v2, v3, density): # create a spiderweb given three verti
     # give the spiderweb volume
     bpy.context.view_layer.objects.active = web_object
     web_object.select_set(True)
-    bpy.ops.object.convert(target='CURVE', keep_original=False, angle=1.22173, thickness=5, seams=False, faces=True, offset=0.01)
-    bpy.context.object.data.bevel_depth = 0.05
-    bpy.ops.object.convert(target='MESH', keep_original=False, angle=1.22173, thickness=5, seams=False, faces=True, offset=0.01)
+    bpy.ops.object.select_all(action='DESELECT')
+    web_object.select_set(True)
+    bpy.ops.object.origin_set(type='ORIGIN_GEOMETRY', center='MEDIAN')
+    skin = web_object.modifiers.new('skinn', type='SKIN')
+    skin.branch_smoothing = 1
+    bpy.ops.object.mode_set(mode = 'OBJECT')
+    bpy.ops.object.select_all(action='DESELECT')
+    web_object.select_set(True)
+    bpy.ops.object.mode_set(mode = 'EDIT') 
+    bpy.ops.object.mode_set(mode = 'OBJECT')
+    bpy.ops.object.mode_set(mode = 'EDIT') 
+    bpy.ops.mesh.select_mode(type="VERT")
+    bpy.ops.mesh.select_all(action = 'SELECT')
+    bpy.ops.transform.resize(value=(50.0, 50.0, 50.0)) #PARAMETER- can be but doesn't have to be, increasing value will make spiderweb thinner x,y,z should be same value
 
+    bpy.ops.object.mode_set(mode = 'OBJECT')
+    bpy.ops.object.origin_set(type='GEOMETRY_ORIGIN', center='MEDIAN')
+    bpy.context.view_layer.objects.active = web_object
+    web_object.select_set(True)
+
+    bpy.ops.transform.resize(value=(.02, .02, .02)) #PARAMETER- only if line 344 is a parameter, is equal to 1/i where i is the parameter value on line 344
+    bpy.ops.object.modifier_apply(modifier='skinn')
+
+    md = web_object.modifiers.new('sub', 'SUBSURF')
+    md.levels=4
+    md.subdivision_type = "SIMPLE"
+    bpy.ops.object.modifier_apply(modifier='sub')
+    bpy.ops.object.shade_smooth()
+    
+    #adds displacement to the spider web
+#    texture = bpy.data.textures["Texture"]
+    texture = bpy.data.textures.new("Texture", type = "CLOUDS")
+#    texture.type = "CLOUDS" #changing type
+    texture = bpy.data.textures["Texture"] # This one has noise_scale attribute
+    texture.noise_scale = 2  #PARAMETER - WILL CHANGE HOW BENDY & CURLY THE WEB WILL GET, MAKES IT LOOK AGED
+    mp = web_object.modifiers.new('dis', 'DISPLACE')
+    mp.strength=1 #PARAMETER- will change how strong the displacement is
+    mp.texture = texture
+
+
+    #does the particle system
+    
+    web_object.modifiers.new('part', type = 'PARTICLE_SYSTEM')
+    part = web_object.particle_systems[0]
+    settings = part.settings
+    settings.type = 'HAIR'
+    settings.count = 400 #PARAMETER- will change how many raindrops there are
+    settings.render_type = 'OBJECT'
+    #PARAMETER- Line 380, radius =.2, will change size of the raindrops
+    sphere= bpy.ops.mesh.primitive_uv_sphere_add(segments=32, ring_count=16, radius=.2, calc_uvs=True, enter_editmode=False, align='WORLD', location=(0.0, 0.0, 0.0), rotation=(0.0, 0.0, 0.0), scale=(0.1, 0.1, 0.1))
+    bpy.ops.object.shade_smooth()
+    settings.instance_object = bpy.data.objects['Sphere']
 
 
 # Properties
